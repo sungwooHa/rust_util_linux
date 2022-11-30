@@ -1,11 +1,10 @@
-extern crate pancurses;
 extern crate term_size;
-extern crate winconsole;
 
+use crossterm::event::KeyCode;
 use pancurses::{endwin, initscr, Input};
 use std::error::Error;
-use std::fs::{self, File};
-use std::io::{BufRead, BufReader, stdin, Read};
+use std::fs::{self, File, read};
+use std::io::{BufRead, BufReader, stdin, Read, stdout};
 use std::path::PathBuf;
 use std::{env, io};
 
@@ -23,7 +22,6 @@ fn main() {
     let mut working_directory = std::env::current_dir().expect("can't find current working diretory");
 
     for (index, argument) in env::args().into_iter().enumerate() {
-        
         if index == 0 {
             continue;
         } else if index == 1{
@@ -45,11 +43,6 @@ fn get_cmd_current_height() -> Option<usize> {
 
 }
 
-use std::io::{stdin, stdout, Write};
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-
 fn more(file_path : &PathBuf) {
     let Some(height_size) = get_cmd_current_height() else {
         println!("Unable to get term size :(");
@@ -62,7 +55,7 @@ fn more(file_path : &PathBuf) {
 
     let vec_line : Vec<_> = reader.lines().into_iter().collect();
 
-    let index = 0;
+    let mut index = 0;
     loop {
         for line in &vec_line[index*height_size..(index+1)*height_size] {
             if let Ok(str_line) = line {
@@ -70,36 +63,42 @@ fn more(file_path : &PathBuf) {
             }
         }
         
-        let stdin = stdin();
-        //setting up stdout and going into raw mode
-        let mut stdout = stdout().into_raw_mode().unwrap();
+        let event = crossterm::event::read().expect("fail read event");
 
-        
-        write!(stdout, r#"{}{}ctrl + q to exit, ctrl + h to print "Hello world!", alt + t to print "termion is cool""#, termion::cursor::Goto(1, 1), termion::clear::All)
-        .unwrap();
-stdout.flush().unwrap();
+        println!("{:?}", event);
+        match event {
+            crossterm::event::Event::Key(key_event) => {
+                match key_event.code {
+                    KeyCode::Left => todo!(),
+                    KeyCode::Right => todo!(),
+                    KeyCode::Up => {
+                        index = {
+                            if index > 0 {
+                                index - 1
+                            }
+                            else {
+                                index
+                            }
+                        }
+                    }
+                    KeyCode::Esc => {
+                        return;
+                    },
+                    KeyCode::Down => {
+                        index += 1;
+                        continue;
+                    },
+                    _=> {
+                        println!("not support");
+                    }
+                }
 
-        //detecting keydown events
-        for c in stdin.keys() {
-            //clearing the screen and going to top left corner
-            write!(
-                stdout,
-                "{}{}",
-                termion::cursor::Goto(1, 1),
-                termion::clear::All
-            )
-            .unwrap();
-
-            //i reckon this speaks for itself
-            match c.unwrap() {
-                Key::Ctrl('h') => println!("Hello world!"),
-                Key::Ctrl('q') => break,
-                Key::Alt('t') => println!("termion is cool"),
-                _ => (),
+            },
+            _ => {
+                println!("?")
             }
-
-            stdout.flush().unwrap();
         }
-        break
+
     }
+
 }
